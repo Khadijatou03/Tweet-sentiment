@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import pipeline
 import plotly.express as px
 import pandas as pd
 
@@ -12,20 +12,21 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model():
-    model_name = "nlptown/bert-base-multilingual-uncased-sentiment"
+    # Utilisation d'un modèle spécifique pour le français
+    model_name = "tblard/tf-allocine"  # Modèle français basé sur CamemBERT et entraîné sur des critiques Allociné
     return pipeline("sentiment-analysis", model=model_name)
 
 def analyze_sentiment(text):
     classifier = load_model()
     result = classifier(text)
-    # Convertir le score 1-5 en catégorie de sentiment
-    score = int(result[0]['label'].split()[0])
-    if score <= 2:
-        return "Négatif", score
-    elif score == 3:
-        return "Neutre", score
-    else:
+    # Le modèle retourne 'POSITIVE' ou 'NEGATIVE'
+    sentiment = result[0]['label']
+    score = result[0]['score']
+    
+    if sentiment == 'POSITIVE':
         return "Positif", score
+    else:
+        return "Négatif", score
 
 # Titre de l'application
 st.title("📊 Analyse de Sentiment en Français")
@@ -46,20 +47,18 @@ if st.button("Analyser le sentiment"):
             with col1:
                 st.subheader("Résultat")
                 st.write(f"Sentiment détecté : **{sentiment}**")
-                st.write(f"Score : {score}/5")
+                st.write(f"Niveau de confiance : {score:.2%}")
             
             with col2:
                 st.subheader("Visualisation")
                 # Création du graphique
-                sentiments = ["Très négatif", "Négatif", "Neutre", "Positif", "Très positif"]
-                scores = [1 if i == score else 0 for i in range(1, 6)]
                 df = pd.DataFrame({
-                    'Sentiment': sentiments,
-                    'Score': scores
+                    'Sentiment': ['Négatif', 'Positif'],
+                    'Score': [1 - score, score] if sentiment == "Positif" else [score, 1 - score]
                 })
                 fig = px.bar(df, x='Sentiment', y='Score',
                             color='Sentiment',
-                            color_discrete_sequence=['red', 'salmon', 'gray', 'lightgreen', 'green'])
+                            color_discrete_sequence=['red', 'green'])
                 fig.update_layout(yaxis_range=[0, 1])
                 st.plotly_chart(fig)
     else:
