@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 import plotly.express as px
 import pandas as pd
 
@@ -10,15 +10,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialisation du modèle (sans cache pour éviter les erreurs)
+# Initialisation du modèle
 def load_model():
     try:
-        # Utilisation d'un modèle plus léger spécifique au français
-        model_name = "cmarkea/distilcamembert-base-sentiment"
+        # Utilisation de CamemBERT pour le français
+        model_name = "camembert-base"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained("almanach/camembert-base-sentiment")
+        
         classifier = pipeline(
-            task="sentiment-analysis",
-            model=model_name,
-            tokenizer=model_name
+            "sentiment-analysis",
+            model=model,
+            tokenizer=tokenizer
         )
         return classifier
     except Exception as e:
@@ -32,16 +35,19 @@ def analyze_sentiment(text):
             return None, 0
             
         result = classifier(text)
-        sentiment = result[0]['label']
+        label = result[0]['label']
         score = result[0]['score']
         
-        # Conversion des labels en français
-        if sentiment == 'POSITIVE':
-            return "Positif", score
-        elif sentiment == 'NEGATIVE':
-            return "Négatif", score
-        else:
-            return "Neutre", score
+        # Conversion des labels
+        sentiment_map = {
+            'POSITIVE': 'Positif',
+            'NEGATIVE': 'Négatif',
+            'NEUTRAL': 'Neutre'
+        }
+        
+        sentiment = sentiment_map.get(label, 'Neutre')
+        return sentiment, score
+        
     except Exception as e:
         st.error(f"Erreur lors de l'analyse : {str(e)}")
         return None, 0
