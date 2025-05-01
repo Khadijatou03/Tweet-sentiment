@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+from transformers import pipeline
 import plotly.express as px
 import pandas as pd
 
@@ -13,16 +13,9 @@ st.set_page_config(
 # Initialisation du modèle
 def load_model():
     try:
-        # Utilisation de CamemBERT pour le français
-        model_name = "camembert-base"
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForSequenceClassification.from_pretrained("almanach/camembert-base-sentiment")
-        
-        classifier = pipeline(
-            "sentiment-analysis",
-            model=model,
-            tokenizer=tokenizer
-        )
+        # Utilisation d'un modèle multilingue qui fonctionne bien avec le français
+        model_name = "nlptown/bert-base-multilingual-uncased-sentiment"
+        classifier = pipeline("sentiment-analysis", model=model_name)
         return classifier
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
@@ -35,18 +28,21 @@ def analyze_sentiment(text):
             return None, 0
             
         result = classifier(text)
-        label = result[0]['label']
-        score = result[0]['score']
+        # Le modèle retourne un score de 1 à 5
+        score = int(result[0]['label'].split()[0])
         
-        # Conversion des labels
-        sentiment_map = {
-            'POSITIVE': 'Positif',
-            'NEGATIVE': 'Négatif',
-            'NEUTRAL': 'Neutre'
-        }
-        
-        sentiment = sentiment_map.get(label, 'Neutre')
-        return sentiment, score
+        # Conversion du score en sentiment
+        if score <= 2:
+            sentiment = "Négatif"
+            normalized_score = 1 - ((score - 1) / 4)  # Convert 1-2 to high-low negative scores
+        elif score == 3:
+            sentiment = "Neutre"
+            normalized_score = 0.5
+        else:
+            sentiment = "Positif"
+            normalized_score = (score - 2) / 4  # Convert 4-5 to low-high positive scores
+            
+        return sentiment, normalized_score
         
     except Exception as e:
         st.error(f"Erreur lors de l'analyse : {str(e)}")
@@ -77,12 +73,16 @@ if st.button("Analyser le sentiment"):
                 with col2:
                     st.subheader("Visualisation")
                     df = pd.DataFrame({
-                        'Sentiment': ['Négatif', 'Positif'],
-                        'Score': [1 - score, score] if sentiment == "Positif" else [score, 1 - score]
+                        'Sentiment': ['Négatif', 'Neutre', 'Positif'],
+                        'Score': [
+                            score if sentiment == "Négatif" else 0,
+                            score if sentiment == "Neutre" else 0,
+                            score if sentiment == "Positif" else 0
+                        ]
                     })
                     fig = px.bar(df, x='Sentiment', y='Score',
                                 color='Sentiment',
-                                color_discrete_sequence=['red', 'green'])
+                                color_discrete_sequence=['red', 'gray', 'green'])
                     fig.update_layout(yaxis_range=[0, 1])
                     st.plotly_chart(fig)
     else:
