@@ -13,8 +13,8 @@ st.set_page_config(
 # Initialisation du modèle
 def load_model():
     try:
-        # Utilisation d'un modèle multilingue qui fonctionne bien avec le français
-        model_name = "nlptown/bert-base-multilingual-uncased-sentiment"
+        # Utilisation d'un modèle spécifique pour le français
+        model_name = "cmarkea/distilcamembert-base-sentiment"
         classifier = pipeline("sentiment-analysis", model=model_name)
         return classifier
     except Exception as e:
@@ -25,28 +25,33 @@ def analyze_sentiment(text):
     try:
         classifier = load_model()
         if classifier is None:
-            return None, 0
+            return None, None, None
             
         result = classifier(text)
-        # Le modèle retourne un score de 1 à 5
-        score = int(result[0]['label'].split()[0])
         
-        # Conversion du score en sentiment
-        if score <= 2:
-            sentiment = "Négatif"
-            normalized_score = 1 - ((score - 1) / 4)  # Convert 1-2 to high-low negative scores
-        elif score == 3:
-            sentiment = "Neutre"
-            normalized_score = 0.5
-        else:
+        # Le modèle retourne directement les probabilités pour chaque classe
+        probs = result[0]
+        
+        # Déterminer le sentiment avec le score le plus élevé
+        if probs['label'] == 'POSITIVE':
             sentiment = "Positif"
-            normalized_score = (score - 2) / 4  # Convert 4-5 to low-high positive scores
+        elif probs['label'] == 'NEGATIVE':
+            sentiment = "Négatif"
+        else:
+            sentiment = "Neutre"
             
-        return sentiment, normalized_score
+        # Calculer les probabilités pour chaque classe
+        scores = {
+            'Positif': probs['score'] if probs['label'] == 'POSITIVE' else 0.1,
+            'Neutre': probs['score'] if probs['label'] == 'NEUTRAL' else 0.1,
+            'Négatif': probs['score'] if probs['label'] == 'NEGATIVE' else 0.1
+        }
+            
+        return sentiment, probs['score'], scores
         
     except Exception as e:
         st.error(f"Erreur lors de l'analyse : {str(e)}")
-        return None, 0
+        return None, None, None
 
 # Interface utilisateur
 st.title("📊 Analyse de Sentiment en Français")
@@ -59,30 +64,28 @@ texte = st.text_area("Texte", height=100)
 if st.button("Analyser le sentiment"):
     if texte:
         with st.spinner("Analyse en cours..."):
-            sentiment, score = analyze_sentiment(texte)
+            sentiment, score, scores = analyze_sentiment(texte)
             
             if sentiment is not None:
                 # Affichage des résultats
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.subheader("Résultat")
-                    st.write(f"Sentiment détecté : **{sentiment}**")
-                    st.write(f"Niveau de confiance : {score:.2%}")
+                    st.subheader("Résultats")
+                    st.write(f"Sentiment prédit : **{sentiment}**")
+                    st.write("Probabilités :")
+                    for sent, prob in scores.items():
+                        st.write(f"- {sent}: {prob:.2%}")
                 
                 with col2:
                     st.subheader("Visualisation")
                     df = pd.DataFrame({
-                        'Sentiment': ['Négatif', 'Neutre', 'Positif'],
-                        'Score': [
-                            score if sentiment == "Négatif" else 0,
-                            score if sentiment == "Neutre" else 0,
-                            score if sentiment == "Positif" else 0
-                        ]
+                        'Sentiment': list(scores.keys()),
+                        'Probabilité': list(scores.values())
                     })
-                    fig = px.bar(df, x='Sentiment', y='Score',
+                    fig = px.bar(df, x='Sentiment', y='Probabilité',
                                 color='Sentiment',
-                                color_discrete_sequence=['red', 'gray', 'green'])
+                                color_discrete_sequence=['green', 'gray', 'red'])
                     fig.update_layout(yaxis_range=[0, 1])
                     st.plotly_chart(fig)
     else:
