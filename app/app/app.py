@@ -13,10 +13,11 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     try:
+        # Utilisation d'un modèle multilingue robuste
         return pipeline(
-            "sentiment-analysis",
-            model="SamuelAMZ/french_sentiment_analysis_classifier",
-            tokenizer="SamuelAMZ/french_sentiment_analysis_classifier"
+            task="sentiment-analysis",
+            model="cardiffnlp/twitter-xlm-roberta-base-sentiment",
+            tokenizer="cardiffnlp/twitter-xlm-roberta-base-sentiment"
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
@@ -33,12 +34,14 @@ def analyze_sentiment(text):
         score = result[0]['score']
         
         # Conversion des labels en français
-        if label == 'POSITIVE':
-            return "Positif", score
-        elif label == 'NEGATIVE':
-            return "Négatif", score
-        else:
-            return "Neutre", score
+        sentiment_map = {
+            'positive': 'Positif',
+            'negative': 'Négatif',
+            'neutral': 'Neutre'
+        }
+        
+        sentiment = sentiment_map.get(label.lower(), 'Neutre')
+        return sentiment, score
             
     except Exception as e:
         st.error(f"Erreur lors de l'analyse : {str(e)}")
