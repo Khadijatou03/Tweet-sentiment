@@ -85,7 +85,7 @@ def translate_to_wolof(text, source_lang="fr_XX"):
         # Génération de la traduction
         translated_tokens = model.generate(
             **inputs,
-            forced_bos_token_id=tokenizer.lang_code_to_id["wol_Latn"],
+            forced_bos_token_id=tokenizer.lang_code_to_id["wo_AF"],  # Code correct pour le wolof
             max_length=512,
             num_beams=5,
             num_return_sequences=1,
