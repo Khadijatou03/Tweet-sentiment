@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, MarianMTModel, MarianTokenizer
+from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, MBartForConditionalGeneration, MBart50TokenizerFast
 import plotly.express as px
 import pandas as pd
 
@@ -31,16 +31,16 @@ def load_model():
 @st.cache_resource
 def load_translator():
     """
-    Charge le modèle de traduction français-wolof.
+    Charge le modèle de traduction multilingue MBart.
     """
     try:
-        model_name = "Helsinki-NLP/opus-mt-fr-wo"
-        tokenizer = MarianTokenizer.from_pretrained(model_name)
-        model = MarianMTModel.from_pretrained(model_name)
-        return pipeline("translation", model=model, tokenizer=tokenizer)
+        model_name = "facebook/mbart-large-50-many-to-many-mmt"
+        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
+        model = MBartForConditionalGeneration.from_pretrained(model_name)
+        return model, tokenizer
     except Exception as e:
         st.error(f"Erreur lors du chargement du traducteur : {str(e)}")
-        return None
+        return None, None
 
 def analyze_sentiment(text):
     """
@@ -69,17 +69,31 @@ def analyze_sentiment(text):
         st.error(f"Erreur lors de l'analyse : {str(e)}")
         return None, None
 
-def translate_to_wolof(text):
+def translate_to_wolof(text, source_lang="fr_XX"):
     """
-    Traduit le texte en wolof.
+    Traduit le texte en wolof en utilisant le modèle MBart.
     """
     try:
-        translator = load_translator()
-        if translator is None:
+        model, tokenizer = load_translator()
+        if model is None or tokenizer is None:
             return None
+
+        # Configuration pour le wolof
+        tokenizer.src_lang = source_lang
+        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
         
-        result = translator(text, max_length=512)
-        return result[0]['translation_text']
+        # Génération de la traduction
+        translated_tokens = model.generate(
+            **inputs,
+            forced_bos_token_id=tokenizer.lang_code_to_id["wol_Latn"],
+            max_length=512,
+            num_beams=5,
+            num_return_sequences=1,
+            temperature=1.0
+        )
+        
+        translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+        return translation
             
     except Exception as e:
         st.error(f"Erreur lors de la traduction : {str(e)}")
@@ -95,28 +109,32 @@ texte = st.text_area("Votre texte", height=100)
 col1, col2 = st.columns(2)
 
 with col1:
-    if texte:
-        sentiment, score = analyze_sentiment(texte)
-        
-        if sentiment is not None:
-            st.subheader("Résultat de l'analyse")
-            st.write(f"Sentiment détecté : **{sentiment}**")
-            st.write(f"Niveau de confiance : {score:.2%}")
-            
-            # Visualisation
-            df = pd.DataFrame({
-                'Sentiment': ['Négatif', 'Neutre', 'Positif'],
-                'Score': [
-                    score if sentiment == "Négatif" else 0,
-                    score if sentiment == "Neutre" else 0,
-                    score if sentiment == "Positif" else 0
-                ]
-            })
-            fig = px.bar(df, x='Sentiment', y='Score',
-                        color='Sentiment',
-                        color_discrete_sequence=['red', 'gray', 'green'])
-            fig.update_layout(yaxis_range=[0, 1])
-            st.plotly_chart(fig)
+    if st.button("Analyser le sentiment"):
+        if texte:
+            with st.spinner("Analyse en cours..."):
+                sentiment, score = analyze_sentiment(texte)
+                
+                if sentiment is not None:
+                    st.subheader("Résultat de l'analyse")
+                    st.write(f"Sentiment détecté : **{sentiment}**")
+                    st.write(f"Niveau de confiance : {score:.2%}")
+                    
+                    # Visualisation
+                    df = pd.DataFrame({
+                        'Sentiment': ['Négatif', 'Neutre', 'Positif'],
+                        'Score': [
+                            score if sentiment == "Négatif" else 0,
+                            score if sentiment == "Neutre" else 0,
+                            score if sentiment == "Positif" else 0
+                        ]
+                    })
+                    fig = px.bar(df, x='Sentiment', y='Score',
+                                color='Sentiment',
+                                color_discrete_sequence=['red', 'gray', 'green'])
+                    fig.update_layout(yaxis_range=[0, 1])
+                    st.plotly_chart(fig)
+        else:
+            st.warning("Veuillez entrer un texte à analyser.")
 
 with col2:
     if texte:
