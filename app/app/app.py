@@ -1,6 +1,5 @@
 import streamlit as st
 from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, MBartForConditionalGeneration, MBart50TokenizerFast
-from langdetect import detect
 import plotly.express as px
 import pandas as pd
 
@@ -21,6 +20,17 @@ MBART_LANG_CODES = {
     'ar': 'ar_AR',
     'wo': 'wo_AF'
 }
+
+@st.cache_resource
+def load_language_detector():
+    """
+    Charge le modèle de détection de langue.
+    """
+    try:
+        return pipeline("text-classification", model="papluca/xlm-roberta-base-language-detection")
+    except Exception as e:
+        st.error(f"Erreur lors du chargement du détecteur de langue : {str(e)}")
+        return None
 
 @st.cache_resource
 def load_model():
@@ -59,8 +69,13 @@ def detect_language(text):
     Détecte la langue du texte et retourne le code de langue MBart correspondant.
     """
     try:
-        detected = detect(text)
-        return MBART_LANG_CODES.get(detected, 'fr_XX')  # Par défaut fr_XX si la langue n'est pas dans le mapping
+        detector = load_language_detector()
+        if detector is None:
+            return 'fr_XX'
+            
+        result = detector(text)[0]
+        detected = result['label'].lower()
+        return MBART_LANG_CODES.get(detected, 'fr_XX')
     except:
         return 'fr_XX'  # Par défaut français si la détection échoue
 
