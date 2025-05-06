@@ -42,28 +42,31 @@ def load_model():
         return None
 
 def analyze_sentiment(text):
+    """
+    Analyse le sentiment d'un texte et retourne le sentiment et le score.
+    """
     try:
         classifier = load_model()
         if classifier is None:
-            return None, 0
+            return None, None
             
-        result = classifier(text)
-        score = result[0]['score']
-        rating = int(result[0]['label'].split()[0])  # Extraire le nombre de 1 à 5
+        result = classifier(text)[0]
+        label = result['label']
+        score = result['score']
         
-        # Conversion du rating 1-5 en sentiment
-        if rating <= 2:
-            sentiment = 'Négatif'
-        elif rating == 3:
-            sentiment = 'Neutre'
-        else:
-            sentiment = 'Positif'
+        # Conversion des étiquettes en format lisible
+        sentiment_map = {
+            'positive': 'Positif',
+            'negative': 'Négatif',
+            'neutral': 'Neutre'
+        }
         
+        sentiment = sentiment_map.get(label.lower(), 'Neutre')
         return sentiment, score
-            
+        
     except Exception as e:
         st.error(f"Erreur lors de l'analyse : {str(e)}")
-        return None, 0
+        return None, None
 
 @st.cache_resource
 def load_translator():
