@@ -16,21 +16,16 @@ def load_model():
     Charge un modèle d'analyse de sentiment robuste et multilingue.
     
     Retourne un objet `pipeline` de Hugging Face permettant d'analyser le sentiment
-    d'un texte en utilisant le modèle "cardiffnlp/twitter-xlm-roberta-base-sentiment".
+    d'un texte en utilisant le modèle "nlptown/bert-base-multilingual-uncased-sentiment".
     
     Si le modèle n'est pas disponible (par exemple si le modèle n'a pas encore été
     téléchargé), affiche un message d'erreur et retourne `None`.
     """
     try:
-        # Chargement explicite du tokenizer et du modèle
-        model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForSequenceClassification.from_pretrained(model_name)
-        
+        # Utilisation d'un modèle multilingue plus stable
         return pipeline(
             task="sentiment-analysis",
-            model=model,
-            tokenizer=tokenizer
+            model="nlptown/bert-base-multilingual-uncased-sentiment"
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
@@ -43,17 +38,17 @@ def analyze_sentiment(text):
             return None, 0
             
         result = classifier(text)
-        label = result[0]['label']
         score = result[0]['score']
+        rating = int(result[0]['label'].split()[0])  # Extraire le nombre de 1 à 5
         
-        # Conversion des labels en français
-        sentiment_map = {
-            'positive': 'Positif',
-            'negative': 'Négatif',
-            'neutral': 'Neutre'
-        }
+        # Conversion du rating 1-5 en sentiment
+        if rating <= 2:
+            sentiment = 'Négatif'
+        elif rating == 3:
+            sentiment = 'Neutre'
+        else:
+            sentiment = 'Positif'
         
-        sentiment = sentiment_map.get(label.lower(), 'Neutre')
         return sentiment, score
             
     except Exception as e:
