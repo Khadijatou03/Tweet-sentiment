@@ -1,36 +1,14 @@
 import streamlit as st
-from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification
 import plotly.express as px
 import pandas as pd
 
 # Configuration de la page
 st.set_page_config(
-    page_title="Analyse de Sentiment Multilingue avec Support du Wolof",
+    page_title="Analyse de Sentiment Multilingue",
     page_icon="📊",
     layout="wide"
 )
-
-# Mapping des codes de langue pour MBart
-MBART_LANG_CODES = {
-    'fr': 'fr_XX',
-    'en': 'en_XX',
-    'es': 'es_XX',
-    'de': 'de_DE',
-    'it': 'it_IT',
-    'ar': 'ar_AR',
-    'wo': 'wo_AF'
-}
-
-@st.cache_resource
-def load_language_detector():
-    """
-    Charge le modèle de détection de langue.
-    """
-    try:
-        return pipeline("text-classification", model="papluca/xlm-roberta-base-language-detection")
-    except Exception as e:
-        st.error(f"Erreur lors du chargement du détecteur de langue : {str(e)}")
-        return None
 
 @st.cache_resource
 def load_model():
@@ -49,35 +27,6 @@ def load_model():
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
         return None
-
-@st.cache_resource
-def load_translator():
-    """
-    Charge le modèle de traduction M2M100.
-    """
-    try:
-        model_name = "facebook/m2m100_418M"  # Modèle multilingue plus robuste
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-        return model, tokenizer
-    except Exception as e:
-        st.error(f"Erreur lors du chargement du traducteur : {str(e)}")
-        return None, None
-
-def detect_language(text):
-    """
-    Détecte la langue du texte et retourne le code de langue MBart correspondant.
-    """
-    try:
-        detector = load_language_detector()
-        if detector is None:
-            return 'fr_XX'
-            
-        result = detector(text)[0]
-        detected = result['label'].lower()
-        return MBART_LANG_CODES.get(detected, 'fr_XX')
-    except:
-        return 'fr_XX'  # Par défaut français si la détection échoue
 
 def analyze_sentiment(text):
     """
@@ -106,99 +55,47 @@ def analyze_sentiment(text):
         st.error(f"Erreur lors de l'analyse : {str(e)}")
         return None, None
 
-def translate_to_wolof(text, source_lang=None):
-    """
-    Traduit le texte en wolof en utilisant le modèle M2M100.
-    """
-    try:
-        model, tokenizer = load_translator()
-        if model is None or tokenizer is None:
-            return None, None
-
-        # Détection automatique de la langue source si non spécifiée
-        if source_lang is None:
-            source_lang = detect_language(text)
-        
-        # Conversion des codes de langue pour M2M100
-        source_lang = source_lang.split('_')[0]  # Prend juste la première partie (fr, en, etc.)
-        
-        # Configuration de la traduction
-        tokenizer.src_lang = source_lang
-        encoded = tokenizer(text, return_tensors="pt")
-        
-        # Génération de la traduction
-        generated_tokens = model.generate(
-            **encoded,
-            forced_bos_token_id=tokenizer.get_lang_id("wol"),
-            max_length=512,
-            num_beams=5,
-            num_return_sequences=1,
-            temperature=1.0
-        )
-        
-        translation = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
-        return translation, source_lang
-            
-    except Exception as e:
-        st.error(f"Erreur lors de la traduction : {str(e)}")
-        return None, None
-
 # Interface utilisateur
-st.title("📊 Analyse de Sentiment Multilingue avec Support du Wolof")
-st.write("Écrivez votre texte dans n'importe quelle langue - le système détectera automatiquement la langue!")
+st.title("📊 Analyse de Sentiment Multilingue")
+st.write("Écrivez votre texte dans n'importe quelle langue (français, anglais, wolof, etc.)")
+
+# Exemples en différentes langues
+with st.expander("Voir des exemples de textes"):
+    st.write("""
+    **Français**: "Je suis très content aujourd'hui!"
+    **English**: "This is a great day!"
+    **Wolof**: "Dama bëgg lii!"
+    """)
 
 # Zone de texte pour l'entrée
 texte = st.text_area("Votre texte", height=100)
 
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("Analyser le sentiment"):
-        if texte:
-            with st.spinner("Analyse en cours..."):
-                # Détection de la langue
-                langue_detectee = detect_language(texte)
-                st.info(f"Langue détectée : {langue_detectee.split('_')[0].upper()}")
-                
-                sentiment, score = analyze_sentiment(texte)
-                
-                if sentiment is not None:
-                    st.subheader("Résultat de l'analyse")
-                    st.write(f"Sentiment détecté : **{sentiment}**")
-                    st.write(f"Niveau de confiance : {score:.2%}")
-                    
-                    # Visualisation
-                    df = pd.DataFrame({
-                        'Sentiment': ['Négatif', 'Neutre', 'Positif'],
-                        'Score': [
-                            score if sentiment == "Négatif" else 0,
-                            score if sentiment == "Neutre" else 0,
-                            score if sentiment == "Positif" else 0
-                        ]
-                    })
-                    fig = px.bar(df, x='Sentiment', y='Score',
-                                color='Sentiment',
-                                color_discrete_sequence=['red', 'gray', 'green'])
-                    fig.update_layout(yaxis_range=[0, 1])
-                    st.plotly_chart(fig)
-        else:
-            st.warning("Veuillez entrer un texte à analyser.")
-
-with col2:
+if st.button("Analyser le sentiment"):
     if texte:
-        if st.button("Traduire en Wolof"):
-            with st.spinner("Traduction en cours..."):
-                traduction, langue_source = translate_to_wolof(texte)
-                if traduction:
-                    st.subheader("Traduction en Wolof")
-                    st.write(f"Traduit depuis : {langue_source.split('_')[0].upper()}")
-                    st.write(traduction)
-                    
-                    # Analyse du sentiment de la traduction
-                    sentiment_trad, score_trad = analyze_sentiment(traduction)
-                    if sentiment_trad is not None:
-                        st.write(f"Sentiment de la traduction : **{sentiment_trad}**")
-                        st.write(f"Niveau de confiance : {score_trad:.2%}")
+        with st.spinner("Analyse en cours..."):
+            sentiment, score = analyze_sentiment(texte)
+            
+            if sentiment is not None:
+                st.subheader("Résultat de l'analyse")
+                st.write(f"Sentiment détecté : **{sentiment}**")
+                st.write(f"Niveau de confiance : {score:.2%}")
+                
+                # Visualisation
+                df = pd.DataFrame({
+                    'Sentiment': ['Négatif', 'Neutre', 'Positif'],
+                    'Score': [
+                        score if sentiment == "Négatif" else 0,
+                        score if sentiment == "Neutre" else 0,
+                        score if sentiment == "Positif" else 0
+                    ]
+                })
+                fig = px.bar(df, x='Sentiment', y='Score',
+                            color='Sentiment',
+                            color_discrete_sequence=['red', 'gray', 'green'])
+                fig.update_layout(yaxis_range=[0, 1])
+                st.plotly_chart(fig)
+    else:
+        st.warning("Veuillez entrer un texte à analyser.")
 
 # Pied de page
 st.markdown("---")
