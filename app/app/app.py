@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
 import plotly.express as px
 import pandas as pd
 
@@ -28,8 +28,8 @@ def load_model():
     try:
         model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
         
-        # Chargement explicite du tokenizer et du modèle
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+        # Utilisation explicite de XLMRobertaTokenizer
+        tokenizer = XLMRobertaTokenizer.from_pretrained(model_name)
         model = AutoModelForSequenceClassification.from_pretrained(model_name)
         
         return pipeline(
