@@ -26,9 +26,16 @@ def load_model():
     Charge le modèle XLM-RoBERTa pour l'analyse de sentiment multilingue.
     """
     try:
+        model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
+        
+        # Chargement explicite du tokenizer et du modèle
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        
         return pipeline(
-            task="sentiment-analysis",
-            model="cardiffnlp/twitter-xlm-roberta-base-sentiment"
+            "sentiment-analysis",
+            model=model,
+            tokenizer=tokenizer
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
