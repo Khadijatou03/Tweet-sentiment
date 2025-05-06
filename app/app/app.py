@@ -3,9 +3,19 @@ from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassifica
 import plotly.express as px
 import pandas as pd
 
+# Configuration des langues supportées
+SUPPORTED_LANGUAGES = {
+    "Français": "fr",
+    "English": "en",
+    "Español": "es",
+    "Deutsch": "de",
+    "Italiano": "it",
+    "Wolof": "wo"  # Ajout du Wolof
+}
+
 # Configuration de la page
 st.set_page_config(
-    page_title="Analyse de Sentiment et Traduction Wolof",
+    page_title="Analyse de Sentiment Multilingue",
     page_icon="📊",
     layout="wide"
 )
@@ -13,19 +23,12 @@ st.set_page_config(
 @st.cache_resource
 def load_model():
     """
-    Charge un modèle d'analyse de sentiment robuste et multilingue.
-    
-    Retourne un objet `pipeline` de Hugging Face permettant d'analyser le sentiment
-    d'un texte en utilisant le modèle "nlptown/bert-base-multilingual-uncased-sentiment".
-    
-    Si le modèle n'est pas disponible (par exemple si le modèle n'a pas encore été
-    téléchargé), affiche un message d'erreur et retourne `None`.
+    Charge le modèle XLM-RoBERTa pour l'analyse de sentiment multilingue.
     """
     try:
-        # Utilisation d'un modèle multilingue plus stable
         return pipeline(
             task="sentiment-analysis",
-            model="nlptown/bert-base-multilingual-uncased-sentiment"
+            model="cardiffnlp/twitter-xlm-roberta-base-sentiment"
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
@@ -58,20 +61,20 @@ def analyze_sentiment(text):
 @st.cache_resource
 def load_translator():
     """
-    Charge le modèle de traduction français-wolof.
+    Charge le modèle de traduction.
     """
     try:
         return pipeline(
             "translation",
-            model="bilalfaye/nllb-200-distilled-600M-wolof-french",
-            src_lang="fra_Latn",
-            tgt_lang="wol_Latn"
+            model="t5-base",
+            src_lang="fr_Latn",
+            tgt_lang="wo_Latn"
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du traducteur : {str(e)}")
         return None
 
-def translate_text(text, source_lang="fra_Latn", target_lang="wol_Latn"):
+def translate_text(text, source_lang="fr_Latn", target_lang="wo_Latn"):
     """
     Traduit le texte entre le français et le wolof.
     """
@@ -88,8 +91,14 @@ def translate_text(text, source_lang="fra_Latn", target_lang="wol_Latn"):
         return None
 
 # Interface utilisateur
-st.title("📊 Analyse de Sentiment et Traduction Wolof")
-st.write("Entrez votre texte en français pour l'analyser et le traduire en wolof :")
+st.title("📊 Analyse de Sentiment Multilingue")
+st.write("Analysez vos textes dans différentes langues :")
+
+# Sélection de la langue
+langue = st.selectbox(
+    "Langue du texte",
+    options=list(SUPPORTED_LANGUAGES.keys())
+)
 
 # Zone de texte pour l'entrée
 texte = st.text_area("Texte", height=100)
@@ -125,22 +134,31 @@ with col1:
             st.warning("Veuillez entrer un texte à analyser.")
 
 with col2:
-    if st.button("Traduire en Wolof"):
+    # Sélection de la langue cible pour la traduction
+    target_lang = st.selectbox(
+        "Traduire vers",
+        options=[lang for lang in SUPPORTED_LANGUAGES.keys() if lang != langue]
+    )
+    
+    if st.button(f"Traduire en {target_lang}"):
         if texte:
             with st.spinner("Traduction en cours..."):
-                traduction = translate_text(texte)
+                source_lang_code = f"{SUPPORTED_LANGUAGES[langue]}_Latn"
+                target_lang_code = f"{SUPPORTED_LANGUAGES[target_lang]}_Latn"
+                
+                traduction = translate_text(texte, 
+                                         source_lang=source_lang_code,
+                                         target_lang=target_lang_code)
                 if traduction:
-                    st.subheader("Traduction en Wolof")
+                    st.subheader(f"Traduction en {target_lang}")
                     st.write(traduction)
                     
-                    # Option pour traduire du Wolof vers le Français
-                    if st.button("Retraduire vers le Français"):
-                        retraduction = translate_text(traduction, 
-                                                   source_lang="wol_Latn", 
-                                                   target_lang="fra_Latn")
-                        if retraduction:
-                            st.subheader("Retraduction en Français")
-                            st.write(retraduction)
+                    # Analyse du sentiment de la traduction
+                    if st.button(f"Analyser le sentiment de la traduction"):
+                        sentiment_trad, score_trad = analyze_sentiment(traduction)
+                        if sentiment_trad is not None:
+                            st.write(f"Sentiment détecté : **{sentiment_trad}**")
+                            st.write(f"Niveau de confiance : {score_trad:.2%}")
         else:
             st.warning("Veuillez entrer un texte à traduire.")
 
