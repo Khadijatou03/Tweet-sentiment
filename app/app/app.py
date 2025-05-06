@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 import plotly.express as px
 import pandas as pd
 
@@ -12,12 +12,25 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model():
+    """
+    Charge un modèle d'analyse de sentiment robuste et multilingue.
+    
+    Retourne un objet `pipeline` de Hugging Face permettant d'analyser le sentiment
+    d'un texte en utilisant le modèle "cardiffnlp/twitter-xlm-roberta-base-sentiment".
+    
+    Si le modèle n'est pas disponible (par exemple si le modèle n'a pas encore été
+    téléchargé), affiche un message d'erreur et retourne `None`.
+    """
     try:
-        # Utilisation d'un modèle multilingue robuste
+        # Chargement explicite du tokenizer et du modèle
+        model_name = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(model_name)
+        
         return pipeline(
             task="sentiment-analysis",
-            model="cardiffnlp/twitter-xlm-roberta-base-sentiment",
-            tokenizer="cardiffnlp/twitter-xlm-roberta-base-sentiment"
+            model=model,
+            tokenizer=tokenizer
         )
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {str(e)}")
