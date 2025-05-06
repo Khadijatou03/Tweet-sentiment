@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, MBartForConditionalGeneration, MBart50TokenizerFast
+from transformers import pipeline, XLMRobertaTokenizer, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM, AutoTokenizer
 import plotly.express as px
 import pandas as pd
 
@@ -53,12 +53,12 @@ def load_model():
 @st.cache_resource
 def load_translator():
     """
-    Charge le modèle de traduction multilingue MBart.
+    Charge le modèle de traduction M2M100.
     """
     try:
-        model_name = "facebook/mbart-large-50-many-to-many-mmt"
-        tokenizer = MBart50TokenizerFast.from_pretrained(model_name)
-        model = MBartForConditionalGeneration.from_pretrained(model_name)
+        model_name = "facebook/m2m100_418M"  # Modèle multilingue plus robuste
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
         return model, tokenizer
     except Exception as e:
         st.error(f"Erreur lors du chargement du traducteur : {str(e)}")
@@ -108,7 +108,7 @@ def analyze_sentiment(text):
 
 def translate_to_wolof(text, source_lang=None):
     """
-    Traduit le texte en wolof en utilisant le modèle MBart.
+    Traduit le texte en wolof en utilisant le modèle M2M100.
     """
     try:
         model, tokenizer = load_translator()
@@ -119,21 +119,24 @@ def translate_to_wolof(text, source_lang=None):
         if source_lang is None:
             source_lang = detect_language(text)
         
-        # Configuration pour le wolof
+        # Conversion des codes de langue pour M2M100
+        source_lang = source_lang.split('_')[0]  # Prend juste la première partie (fr, en, etc.)
+        
+        # Configuration de la traduction
         tokenizer.src_lang = source_lang
-        inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        encoded = tokenizer(text, return_tensors="pt")
         
         # Génération de la traduction
-        translated_tokens = model.generate(
-            **inputs,
-            forced_bos_token_id=tokenizer.lang_code_to_id["wo_AF"],
+        generated_tokens = model.generate(
+            **encoded,
+            forced_bos_token_id=tokenizer.get_lang_id("wol"),
             max_length=512,
             num_beams=5,
             num_return_sequences=1,
             temperature=1.0
         )
         
-        translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+        translation = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
         return translation, source_lang
             
     except Exception as e:
