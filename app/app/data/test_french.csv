@@ -1,0 +1,16 @@
+text,label
+"Ce film était absolument fantastique ! Le meilleur que j'ai vu cette année ! 🎬",positive
+"Le service client était excellent, ils ont fait plus que nécessaire pour m'aider 👍",positive
+"Je suis vraiment content de mon nouveau téléphone, il fonctionne parfaitement ! 📱",positive
+"Je viens d'être promu au travail, je me sens béni ! 🙌",positive
+"Quelle belle journée pour une promenade au parc ! ☀️",positive
+"Je ne sais pas trop quoi penser de ce livre, il n'est ni bon ni mauvais",neutral
+"Le temps est correct aujourd'hui, ni super ni terrible",neutral
+"Je n'ai pas encore décidé si j'aime ce nouveau restaurant",neutral
+"Ce film était juste moyen, rien de spécial",neutral
+"Le produit fonctionne comme prévu, ni plus ni moins",neutral
+"C'est le pire service que j'ai jamais expérimenté ! Je ne reviendrai jamais ! 😠",negative
+"La qualité de ce produit est terrible, un gaspillage total d'argent 👎",negative
+"Je suis vraiment déçu de la nouvelle mise à jour, elle a tout cassé",negative
+"La nourriture était froide et le serveur était impoli 😡",negative
+"Je n'arrive pas à croire à quel point ce film était mauvais, une catastrophe totale 🤮",negative
