@@ -59,13 +59,9 @@ class ModelEvaluator:
         plt.show()
 
 def main():
-    # Chargement des données de test avec les chemins corrects
-    test_en = pd.read_csv("data/test_en.csv")
-    train_en = pd.read_csv("data/train_en.csv")
-    sample_submission = pd.read_csv("data/sample_submission.csv")
-    test_fr = pd.read_csv("data/test_fr.csv")
-    train_fr = pd.read_csv("data/train_fr.csv")
-    val_fr = pd.read_csv("data/val_fr.csv")
+    # Chargement des données de test
+    test_en = pd.read_csv("data/dataset_anglais/test_en.csv")
+    test_fr = pd.read_csv("data/dataset_francais/test_fr.csv")
     
     evaluator = ModelEvaluator()
     
