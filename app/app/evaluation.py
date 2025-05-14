@@ -65,47 +65,14 @@ def main():
     
     evaluator = ModelEvaluator()
     
-    print("=== Évaluation avant fine-tuning ===")
-    
-    # Test sur données anglaises
-    print("\nTest sur données anglaises (avant fine-tuning):")
-    results_en = evaluator.evaluate_dataset(
-        test_en['text'].tolist(),
-        test_en['label'].tolist(),
-        use_fine_tuned=False
-    )
-    if results_en:
-        print(f"Accuracy: {results_en['accuracy']:.4f}")
-        print("\nRapport de classification:")
-        print(results_en['classification_report'])
-        evaluator.plot_confusion_matrix(
-            results_en['confusion_matrix'],
-            "Matrice de confusion - Anglais (avant fine-tuning)"
-        )
-    
-    # Test sur données françaises
-    print("\nTest sur données françaises (avant fine-tuning):")
-    results_fr = evaluator.evaluate_dataset(
-        test_fr['text'].tolist(),
-        test_fr['label'].tolist(),
-        use_fine_tuned=False
-    )
-    if results_fr:
-        print(f"Accuracy: {results_fr['accuracy']:.4f}")
-        print("\nRapport de classification:")
-        print(results_fr['classification_report'])
-        evaluator.plot_confusion_matrix(
-            results_fr['confusion_matrix'],
-            "Matrice de confusion - Français (avant fine-tuning)"
-        )
-    
+
     print("\n=== Évaluation après fine-tuning ===")
     
     # Test sur données anglaises
     print("\nTest sur données anglaises (après fine-tuning):")
     results_en_ft = evaluator.evaluate_dataset(
         test_en['text'].tolist(),
-        test_en['label'].tolist(),
+        test_en['sentiment'].tolist(),
         use_fine_tuned=True
     )
     if results_en_ft:
@@ -121,7 +88,7 @@ def main():
     print("\nTest sur données françaises (après fine-tuning):")
     results_fr_ft = evaluator.evaluate_dataset(
         test_fr['text'].tolist(),
-        test_fr['label'].tolist(),
+        test_fr['sentiment'].tolist(),
         use_fine_tuned=True
     )
     if results_fr_ft:
